@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html>
+    <head>
+    	<link rel="stylesheet" href="https://unpkg.com/leaflet@1.2.0/dist/leaflet.css" integrity="sha512-M2wvCLH6DSRazYeZRIm1JnYyh22purTM+FDB5CsyxtQJYeKq83arPe5wgbNmcFXGqiSH2XR8dT/fJISVA1r/zQ==" crossorigin=""/>
+    	<script src="https://unpkg.com/leaflet@1.2.0/dist/leaflet.js" integrity="sha512-lInM/apFSqyy1o6s89K4iQUKg6ppXEgsVxT35HbzUupEVRh2Eu9Wdl4tHj7dZO0s1uvplcYGmt3498TtHq+log==" crossorigin=""></script>
+		<script src="http://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+        <style>
+            html, body, #map {
+                height: 100%;
+                margin: 0;
+            }
+			
+			.label-desc {
+				display: inline-block;
+				margin: 0 0 0 6px;
+				vertical-align: middle;
+			}
+			
+            .label-icon {
+            	background: #e30613;
+            	border: 1px solid rgba(0,0,0,0.2);
+            	border-radius: 12px;
+            	color: #fff;
+            	display: inline-block;
+            	height: 24px !important;
+            	line-height: 24px;
+            	margin: -12px 0 0 -12px !important;
+            	text-align: center;
+            	width: 24px !important;
+            }
+
+			.legend {
+				background: rgba(255,255,255,1);
+				border: 2px solid rgba(0,0,0,0.2);
+				border-radius: 4px;
+				padding: 10px 10px 10px 22px;
+			}
+			
+			.legend > div:not(:first-child) {
+				margin: 10px 0 0 0;
+			}
+			
+			.legend img {
+				vertical-align: middle;
+			} 
+			
+			.logo {
+				background: rgba(255,255,255,1);
+				border: 2px solid rgba(0,0,0,0.2);
+				border-radius: 4px;
+				margin: 10px;
+				padding: 10px;
+				width: 15%;
+			}
+
+			#map {
+				height: 100%;
+			}
+        </style>
+        <title>Tin Wing Plant Map</title>
+    </head>
+    <body>
+        <div id="map"></div>
+        <script>
+			var COLORS=[
+				'yellow',
+				'blue',
+				'green',
+				'lightblue',
+				'orange',
+				'pink',
+				'purple',
+				'red'
+			]
+			var DEVICES={
+				354574902376: {
+					type: 'Crawler Crane',
+					model: 'TK750'
+				},
+				354574902377: {
+					type: 'Crawler Crane',
+					model: 'BM1200'
+				},
+				354574902378: {
+					type: 'Piling Rig',
+					model: 'DH558-110M-3'
+				},
+				354574902379: {
+					type: 'Piling Rig',
+					model: 'DH608-120M'
+				},
+				354574902380: {
+					type: 'Crawler Crane',
+					model: 'BM800'
+				},
+				354574902381: {
+					type: 'Crawler Crane',
+					model: 'BM800'
+				},
+				354574902382: {
+					type: 'Pile Driver',
+					model: 'LM1450'
+				},
+				354574902383: {
+					type: 'Crawler Crane',
+					model: '690HD'
+				},
+				354574902384: {
+					type: 'Crawler Crane',
+					model: 'CKE2500-2'
+				},
+				354574902385: {
+					type: 'Crawler Crane',
+					model: 'BM800'
+				},
+				354574902386: {
+					type: 'Crawler Crane',
+					model: 'HS885HD'
+				},
+				354574902387: {
+					type: 'Crawler Crane',
+					model: 'CKS800'
+				}
+			};
+			var UPDATE_INTERVAL=1000;
+			var map, latestData={}, legend, logo, markers={}, popup;
+						
+           	(function initMap(){
+				// Define zones
+				var areaCoords = [
+					// Define areaA Coordinates
+					[
+						[22.46072827, 114.002097875],
+						[22.459919538, 114.002552427],
+						[22.459877742, 114.002466311],
+						[22.460686474, 114.002011749]
+					],
+					// Define areaB Coordinates
+					[
+						[22.459919529, 114.002552437],
+						[22.459015429, 114.003060597],
+						[22.458973633, 114.002974481],
+						[22.459877733, 114.002466311]
+					],
+					// Define areaC Coordinates
+					[
+						[22.460686474, 114.002011768],
+						[22.459877742, 114.002466321],
+						[22.459835938, 114.002380195],
+						[22.460644678, 114.001925642]
+					],	
+					// Define areaD Coordinates
+					[
+						[22.459877724, 114.00246633],
+						[22.458973633, 114.002974491],
+						[22.458931829, 114.002888365],
+						[22.459835929, 114.002380204]
+					]
+				];
+				var colors = ['red', 'orange', 'yellow', 'green'];
+
+                map=L.map('map').setView([22.459767, 114.002305], 19);
+                L.tileLayer('http://{s}.tile.osm.org/{z}/{x}/{y}.png', {
+                	attribution: '&copy; <a href="http://osm.org/copyright">OpenStreetMap</a> contributors'
+				}).addTo(map);
+
+				legend=L.control({position: 'bottomright'});
+				legend.onAdd=function(map){
+					this.div=L.DomUtil.create('div', 'legend');
+					return this.div;
+				};
+				legend.addTo(map);
+
+				logo=L.control({position: 'topright'});
+				logo.onAdd=function(map){
+					var img=L.DomUtil.create('img', 'logo');
+					img.src='https://sites.google.com/site/streamlinegammon/home/Gammon%20DT%20Logo.png';
+					//img.src='Gammon DT Logo.png';
+					return img;
+				};
+				logo.addTo(map);
+
+				for(var i=0; i<areaCoords.length; i++){
+					L.polygon(areaCoords[i], {
+						color: colors[i],
+						fillColor: colors[i],
+						fillOpacity: 0.35,
+						opacity: 0.8,
+						weight: 1
+					}).addTo(map);
+				}
+				
+				update();
+			})();
+			
+			function getDeviceName(deviceId, newLine){
+				newLine=newLine||false;
+				if(DEVICES[deviceId]){
+					return DEVICES[deviceId].type+(newLine?'<br>':' ')+DEVICES[deviceId].model;
+				}else{
+					return deviceId;
+				}
+			}
+
+			function getPopupContent(deviceId){
+				var content='Name: '+getDeviceName(deviceId)
+					+'<br>Data Log Time: '+latestData[deviceId].dataLogTime
+					+'<br>Positioning Mode: '+latestData[deviceId].positioningMode
+					+'<br>Status: '+latestData[deviceId].status;
+
+				if(new Date(latestData[deviceId].dataLogTime).getDate()<new Date().getDate()) // Outdated
+					content+='<br><b>Switch on on-board phone unit to update location.</b>';
+				return content;
+			}
+			
+			function update(){
+				$.ajax({
+					url: 'http://210.5.183.94/v2/devicePositions/',
+					success: function(data){
+						latestData={};
+						for(var i in data){
+							latestData[data[i].deviceId]=data[i];
+							if(markers[data[i].deviceId]===undefined){
+								var label=String.fromCharCode(65+Object.keys(markers).length);
+								
+								// Add a marker
+								markers[data[i].deviceId]=L.marker([data[i].latitude, data[i].longitude], {icon: L.divIcon({className: 'label-icon', html: label, popupAnchor: [0, -12]})}).addTo(map);
+								markers[data[i].deviceId].deviceId=data[i].deviceId;
+								
+								markers[data[i].deviceId].on('mouseover', function(){
+									popup=this.bindPopup(getPopupContent(this.deviceId)).openPopup();
+								});
+								
+								markers[data[i].deviceId].on('mouseout', function(){
+									popup.closePopup();
+									popup=undefined;
+								});
+								
+								// Add to legend
+								var div=document.createElement('div');
+
+								div.innerHTML='<div class="label-icon">'+label+'</div><div class="label-desc">'+getDeviceName(data[i].deviceId, true)+'</div>';
+								legend.div.appendChild(div);
+							}
+							markers[data[i].deviceId].setLatLng([data[i].latitude, data[i].longitude]);
+							if(popup && popup.deviceId===data[i].deviceId){
+								popup._popup.setContent(getPopupContent(data[i].deviceId));
+							}
+						}
+						setTimeout(update, UPDATE_INTERVAL);
+					}
+				});
+			}
+        </script>
+    </body>
+</html>
